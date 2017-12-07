@@ -47,6 +47,7 @@
   },
   "scripts": {
     "build": "gulp transpile",
+    "install": "gulp transpile",
     "mocha": "mocha",
     "prepublish": "gulp prepublish",
     "test": "gulp once",
