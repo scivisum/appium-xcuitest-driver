@@ -14,20 +14,20 @@ describe('XCUITestDriver - basics', function () {
   this.timeout(MOCHA_TIMEOUT);
 
   let driver;
-  before(async () => {
+  before(async function () {
     driver = await initSession(UICATALOG_CAPS);
   });
-  after(async () => {
+  after(async function () {
     await deleteSession();
   });
 
-  describe('status', () => {
-    it('should get the server status', async () => {
+  describe('status', function () {
+    it('should get the server status', async function () {
       let status = await driver.status();
       status.wda.should.exist;
     });
 
-    it('should return status immediately if another operation is in progress', async () => {
+    it('should return status immediately if another operation is in progress', async function () {
       await driver.setImplicitWaitTimeout(10000);
       let findElementPromise = B.resolve(driver.elementById('WrongLocator'));
       let status = await driver.status();
@@ -42,7 +42,7 @@ describe('XCUITestDriver - basics', function () {
   });
 
   describe('session', () => {
-    it('should get session details with our caps merged with WDA response', async () => {
+    it('should get session details with our caps merged with WDA response', async function () {
       let extraWdaCaps = {
         CFBundleIdentifier: "com.example.apple-samplecode.UICatalog",
         browserName: "UICatalog",
@@ -65,21 +65,33 @@ describe('XCUITestDriver - basics', function () {
     });
   });
 
-  describe('source', () => {
-    it('should get the source for the page', async () => {
-      let src = await driver.source();
-      (typeof src).should.eql('string');
-      src.indexOf('<AppiumAUT>').should.not.eql(-1);
-      src.indexOf('<XCUIElementTypeApplication').should.not.eql(-1);
+  describe('source', function () {
+    function checkSource (src) {
+      // should have full elements
+      src.should.include('<AppiumAUT>');
+      src.should.include('<XCUIElementTypeApplication');
+
+      // should not have any XCTest errors
+      src.should.not.include('AX error');
+    }
+    describe('plain', function () {
+      it('should get the source for the page', async function () {
+        let src = await driver.source();
+        (typeof src).should.eql('string');
+        checkSource(src);
+      });
     });
-    it('should have full types for elements', async () => {
-      let src = await driver.source();
-      src.indexOf('<XCUIElementTypeWindow').should.not.eql(-1);
+    describe('json parsed', function () {
+      it('should get source with useJSONSource', async function () {
+        await driver.updateSettings({useJSONSource: true});
+        let src = await driver.source();
+        checkSource(src);
+      });
     });
   });
 
-  describe('deactivate app', () => {
-    it('should background the app for the specified time', async () => {
+  describe('deactivate app', function () {
+    it('should background the app for the specified time', async function () {
       let before = Date.now();
       await driver.backgroundApp(4);
       (Date.now() - before).should.be.above(4000);
@@ -87,19 +99,23 @@ describe('XCUITestDriver - basics', function () {
     });
   });
 
-  describe('screenshot', () => {
-    after(async () => {
+  describe('screenshot', function () {
+    after(async function () {
       try {
         await driver.setOrientation("PORTRAIT");
       } catch (ign) {}
     });
-    it('should get an app screenshot', async () => {
+    it('should get an app screenshot', async function () {
       let screenshot = await driver.takeScreenshot();
       screenshot.should.exist;
       screenshot.should.be.a.string;
+
+      // make sure WDA didn't crash, by using it again
+      let els = await driver.elementsByAccessibilityId('Action Sheets');
+      els.length.should.eql(1);
     });
 
-    it('should get an app screenshot in landscape mode', async () => {
+    it('should get an app screenshot in landscape mode', async function () {
       let screenshot1 = (await driver.takeScreenshot());
       screenshot1.should.exist;
 
@@ -116,35 +132,35 @@ describe('XCUITestDriver - basics', function () {
     });
   });
 
-  describe('logging', () => {
-    describe('types', () => {
-      it('should get the list of available logs', async () => {
+  describe('logging', function () {
+    describe('types', function () {
+      it('should get the list of available logs', async function () {
         let expectedTypes = ['syslog', 'crashlog', 'performance'];
         (await driver.logTypes()).should.eql(expectedTypes);
       });
     });
 
-    describe('retrieval', () => {
-      it('should throw an error when an invalid type is given', async () => {
+    describe('retrieval', function () {
+      it('should throw an error when an invalid type is given', async function () {
         await driver.log('something-random').should.eventually.be.rejected;
       });
-      it('should get system logs', async () => {
+      it('should get system logs', async function () {
         (await driver.log('syslog')).should.be.an.Array;
       });
-      it('should get crash logs', async () => {
+      it('should get crash logs', async function () {
         (await driver.log('crashlog')).should.be.an.Array;
       });
     });
   });
 
-  describe('orientation', () => {
-    beforeEach(async () => {
+  describe('orientation', function () {
+    beforeEach(async function () {
       await driver.setOrientation('PORTRAIT');
     });
-    afterEach(async () => {
+    afterEach(async function () {
       await driver.setOrientation('PORTRAIT');
     });
-    it('should get the current orientation', async () => {
+    it('should get the current orientation', async function () {
       let orientation = await driver.getOrientation();
       ['PORTRAIT', 'LANDSCAPE'].should.include(orientation);
     });
@@ -165,49 +181,59 @@ describe('XCUITestDriver - basics', function () {
     });
   });
 
-  describe('window size', () => {
-    it('should be able to get the current window size', async () => {
+  describe('window size', function () {
+    it('should be able to get the current window size', async function () {
       let size = await driver.getWindowSize('current');
       size.width.should.be.a.number;
       size.height.should.be.a.number;
     });
-    it('should not be able to get random window size', async () => {
+    it('should not be able to get random window size', async function () {
       await driver.getWindowSize('something-random').should.be.rejectedWith(/Currently only getting current window size is supported/);
     });
   });
 
-  describe('geo location', () => {
-    it('should throw a not-yet-implemented error', async () => {
-      await driver.setGeoLocation('0', '0', '0').should.be.rejectedWith(/Method has not yet been implemented/);
+  describe('geo location', function () {
+    it('should work on Simulator', async function () {
+      if (process.env.CI || process.env.REAL_DEVICE) {
+        // skip on Travis, since Appium process should have access to system accessibility
+        // in order to run this method successfully
+        return this.skip();
+      }
+      await driver.setGeoLocation('30.0001', '21.0002').should.not.be.rejected;
     });
   });
 
-  describe('shake', () => {
-    it('should throw a not-yet-implemented error', async () => {
-      await driver.shake().should.be.rejectedWith(/Method has not yet been implemented/);
+  describe('shake', function () {
+    it('should work on Simulator', async function () {
+      if (process.env.CI || process.env.REAL_DEVICE) {
+        // skip on Travis, since Appium process should have access to system accessibility
+        // in order to run this method successfully
+        return this.skip();
+      }
+      await driver.shakeDevice().should.not.be.rejected;
     });
   });
 
-  describe('lock', () => {
-    it('should throw a not-yet-implemented error', async () => {
+  describe('lock', function () {
+    it('should throw a not-yet-implemented error', async function () {
       await driver.lock().should.be.rejectedWith(/Method has not yet been implemented/);
     });
   });
 
-  describe('contexts', () => {
+  describe('contexts', function () {
     before(async function () {
       let el = await driver.elementByAccessibilityId('Web View');
       await driver.execute('mobile: scroll', {element: el, toVisible: true});
       await el.click();
     });
-    after(async () => {
+    after(async function () {
       await driver.back();
       await driver.execute('mobile: scroll', {direction: 'up'});
     });
 
-    it('should start a session, navigate to url, get title', async () => {
+    it('should start a session, navigate to url, get title', async function () {
       let contexts;
-      await retryInterval(100, 1000, async () => {
+      await retryInterval(100, 1000, async function () {
         // on some systems (like Travis) it takes a while to load the webview
         contexts = await driver.contexts();
         contexts.length.should.be.at.least(2);
@@ -216,7 +242,7 @@ describe('XCUITestDriver - basics', function () {
       await driver.context(contexts[1]);
       await driver.get(GUINEA_PIG_PAGE);
 
-      await retryInterval(100, 1000, async () => {
+      await retryInterval(100, 1000, async function () {
         let title = await driver.title();
         title.should.equal('I am a page title');
       });

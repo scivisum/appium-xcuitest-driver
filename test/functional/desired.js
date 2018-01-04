@@ -8,8 +8,14 @@ import { absolute as testAppPath } from 'ios-test-app';
 
 const PLATFORM_VERSION = process.env.PLATFORM_VERSION ? process.env.PLATFORM_VERSION : '10.3';
 const DEVICE_NAME = process.env.DEVICE_NAME ? process.env.DEVICE_NAME : 'iPhone 6';
-
-const REAL_DEVICE = !!process.env.REAL_DEVICE;
+const SHOW_XCODE_LOG = !!process.env.SHOW_XCODE_LOG;
+const REAL_DEVICE = (function () {
+  let rd = parseInt(process.env.REAL_DEVICE,  10);
+  if (isNaN(rd)) {
+    rd = process.env.REAL_DEVICE;
+  }
+  return !!rd;
+})();
 let XCCONFIG_FILE = process.env.XCCONFIG_FILE;
 if (REAL_DEVICE && !XCCONFIG_FILE) {
   // no xcconfig file specified, so try to find in the root directory of the package
@@ -33,6 +39,7 @@ const GENERIC_CAPS = {
   noReset: true,
   maxTypingFrequency: 30,
   clearSystemFiles: true,
+  showXcodeLog: SHOW_XCODE_LOG,
 };
 
 let simUICatalogApp = path.resolve('.', 'node_modules', 'ios-uicatalog', uiCatalogApp[1]);
@@ -77,9 +84,12 @@ const TOUCHIDAPP_CAPS = _.defaults({
   app: path.resolve('.', 'test', 'assets', 'TouchIDExample.app'),
 }, GENERIC_CAPS);
 
-function isIOS11 () {
-  return PLATFORM_VERSION === '11.0';
-}
+const W3C_CAPS = {
+  capabilities: {
+    alwaysMatch: UICATALOG_CAPS,
+    firstMatch: [{}],
+  }
+};
 
 export { UICATALOG_CAPS, UICATALOG_SIM_CAPS, SAFARI_CAPS, TESTAPP_CAPS,
-         PLATFORM_VERSION, TOUCHIDAPP_CAPS, isIOS11 };
+         PLATFORM_VERSION, TOUCHIDAPP_CAPS, DEVICE_NAME, W3C_CAPS };

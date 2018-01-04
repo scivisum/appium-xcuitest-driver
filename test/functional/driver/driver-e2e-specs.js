@@ -2,32 +2,50 @@ import { startServer } from '../../..';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import wd from 'wd';
+import request from 'request-promise';
 import { retryInterval } from 'asyncbox';
 import { killAllSimulators, getSimulator } from 'appium-ios-simulator';
 import { getDevices, createDevice, deleteDevice } from 'node-simctl';
 import _ from 'lodash';
 import B from 'bluebird';
 import { HOST, PORT, MOCHA_TIMEOUT } from '../helpers/session';
-import { UICATALOG_CAPS, UICATALOG_SIM_CAPS, isIOS11 } from '../desired';
+import { UICATALOG_CAPS, UICATALOG_SIM_CAPS, W3C_CAPS } from '../desired';
 
+
+const SIM_DEVICE_NAME = 'xcuitestDriverTest';
 
 const should = chai.should();
 chai.use(chaiAsPromised);
 
-let getNumSims = async () => {
+const getNumSims = async () => {
   return (await getDevices())[UICATALOG_SIM_CAPS.platformVersion].length;
+};
+const deleteDeviceWithRetry = async function (udid) {
+  try {
+    await retryInterval(10, 1000, deleteDevice, udid);
+  } catch (ign) {}
 };
 
 describe('XCUITestDriver', function () {
   this.timeout(MOCHA_TIMEOUT);
 
+  let caps;
+
   let server, driver;
   before(async () => {
     driver = wd.promiseChainRemote(HOST, PORT);
     server = await startServer(PORT, HOST);
+
+    const udid = await createDevice(SIM_DEVICE_NAME,
+      UICATALOG_SIM_CAPS.deviceName, UICATALOG_SIM_CAPS.platformVersion);
+    caps = Object.assign({}, UICATALOG_SIM_CAPS, {udid});
   });
   after(async () => {
     await server.close();
+
+    const sim = await getSimulator(caps.udid);
+    await sim.shutdown();
+    await deleteDeviceWithRetry(caps.udid);
   });
 
   afterEach(async () => {
@@ -40,66 +58,73 @@ describe('XCUITestDriver', function () {
 
   if (!process.env.REAL_DEVICE) {
     it('should start and stop a session', async function () {
-      await driver.init(UICATALOG_SIM_CAPS);
+      await driver.init(caps);
       let els = await driver.elementsByClassName("XCUIElementTypeWindow");
       els.length.should.be.at.least(1);
     });
 
     it('should start and stop a session doing pre-build', async function () {
-      await driver.init(_.defaults({prebuildWDA: true}, UICATALOG_SIM_CAPS));
+      await driver.init(Object.assign({prebuildWDA: true}, caps));
       let els = await driver.elementsByClassName("XCUIElementTypeWindow");
       els.length.should.be.at.least(1);
     });
 
     it('should start and stop a session doing simple build-test', async function () {
-      await driver.init(_.defaults({useSimpleBuildTest: true}, UICATALOG_SIM_CAPS));
+      await driver.init(Object.assign({useSimpleBuildTest: true}, caps));
       let els = await driver.elementsByClassName("XCUIElementTypeWindow");
       els.length.should.be.at.least(1);
     });
 
     it('should start and stop a session with only bundle id', async function () {
-      let caps = Object.assign({}, UICATALOG_SIM_CAPS, {bundleId: 'com.example.apple-samplecode.UICatalog'});
-      caps.app = null;
-      await driver.init(caps).should.not.eventually.be.rejected;
+      let localCaps = Object.assign({}, caps, {bundleId: 'com.example.apple-samplecode.UICatalog'});
+      localCaps.app = null;
+      await driver.init(localCaps).should.not.eventually.be.rejected;
     });
 
     it('should start and stop a session with only bundle id when no sim is running', async function () {
       await killAllSimulators();
-      let caps = Object.assign({}, UICATALOG_SIM_CAPS, {bundleId: 'com.example.apple-samplecode.UICatalog'});
-      caps.app = null;
-      await driver.init(caps).should.not.eventually.be.rejected;
+      let localCaps = Object.assign({}, caps, {bundleId: 'com.example.apple-samplecode.UICatalog'});
+      localCaps.app = null;
+      await driver.init(localCaps).should.not.eventually.be.rejected;
     });
 
     it('should fail to start and stop a session if unknown bundle id used', async function () {
-      let caps = Object.assign({}, UICATALOG_SIM_CAPS, {bundleId: 'io.blahblahblah.blah'});
-      caps.app = null;
-      await driver.init(caps).should.eventually.be.rejected;
+      let localCaps = Object.assign({}, caps, {bundleId: 'io.blahblahblah.blah'});
+      localCaps.app = null;
+      await driver.init(localCaps).should.eventually.be.rejected;
     });
 
     it('should fail to start and stop a session if unknown bundle id used when no sim is running', async function () {
       await killAllSimulators();
-      let caps = Object.assign({}, UICATALOG_SIM_CAPS, {bundleId: 'io.blahblahblah.blah'});
-      caps.app = null;
-      await driver.init(caps).should.eventually.be.rejected;
+      let localCaps = Object.assign({}, caps, {bundleId: 'io.blahblahblah.blah'});
+      localCaps.app = null;
+      await driver.init(localCaps).should.eventually.be.rejected;
     });
 
     describe('WebdriverAgent port', function () {
       it('should run on default port if no other specified', async function () {
-        let caps = Object.assign({}, UICATALOG_SIM_CAPS, {fullReset: true, showIOSLog: true});
-        caps.wdaLocalPort = null;
-        await driver.init(caps);
+        let localCaps = Object.assign({}, caps, {
+          fullReset: true,
+          showIOSLog: true,
+          useNewWDA: true,
+        });
+        localCaps.wdaLocalPort = null;
+        await driver.init(localCaps);
         let logs = await driver.log('syslog');
-        if (!isIOS11()) {
-          // currently on iOS 11 there is no device log
+        if (!process.env.CI) {
           logs.some((line) => line.message.indexOf(':8100<-') !== -1).should.be.true;
         }
       });
       it('should run on port specified', async function () {
-        let caps = Object.assign({}, UICATALOG_SIM_CAPS, {fullReset: true, showIOSLog: true, wdaLocalPort: 6000});
-        await driver.init(caps);
+        let localCaps = Object.assign({}, caps, {
+          fullReset: true,
+          showIOSLog: true,
+          wdaLocalPort: 6000,
+          useNewWDA: true,
+        });
+        await driver.init(localCaps);
         let logs = await driver.log('syslog');
-        if (!isIOS11()) {
-          // currently on iOS 11 there is no device log
+        if (!process.env.CI) {
           logs.some((line) => line.message.indexOf(':8100<-') !== -1).should.be.false;
           logs.some((line) => line.message.indexOf(':6000<-') !== -1).should.be.true;
         }
@@ -108,10 +133,10 @@ describe('XCUITestDriver', function () {
 
     describe('initial orientation', async () => {
       async function runOrientationTest (initialOrientation) {
-        let caps = _.defaults({
+        let localCaps = _.defaults({
           orientation: initialOrientation
-        }, UICATALOG_SIM_CAPS);
-        await driver.init(caps);
+        }, caps);
+        await driver.init(localCaps);
 
         let orientation = await driver.getOrientation();
         orientation.should.eql(initialOrientation);
@@ -150,7 +175,8 @@ describe('XCUITestDriver', function () {
 
       it('with udid: uses sim and resets afterwards if resetOnSessionStartOnly is false', async () => {
         // before
-        let udid = await createDevice('webDriverAgentTest', 'iPhone 6', UICATALOG_SIM_CAPS.platformVersion);
+        const udid = await createDevice(SIM_DEVICE_NAME,
+          UICATALOG_SIM_CAPS.deviceName, UICATALOG_SIM_CAPS.platformVersion);
         let sim = await getSimulator(udid);
         await sim.run();
 
@@ -174,12 +200,13 @@ describe('XCUITestDriver', function () {
         simsAfter.should.equal(simsBefore);
 
         // cleanup
-        await deleteDevice(udid);
+        await deleteDeviceWithRetry(udid);
       });
 
       it('with udid booted: uses sim and leaves it afterwards', async () => {
         // before
-        let udid = await createDevice('webDriverAgentTest', 'iPhone 6', UICATALOG_SIM_CAPS.platformVersion);
+        const udid = await createDevice(SIM_DEVICE_NAME,
+          UICATALOG_SIM_CAPS.deviceName, UICATALOG_SIM_CAPS.platformVersion);
         let sim = await getSimulator(udid);
         await sim.run();
 
@@ -204,7 +231,7 @@ describe('XCUITestDriver', function () {
 
         // cleanup
         await sim.shutdown();
-        await deleteDevice(udid);
+        await deleteDeviceWithRetry(udid);
       });
 
       it('with invalid udid: throws an error', async () => {
@@ -213,7 +240,7 @@ describe('XCUITestDriver', function () {
           udid: 'some-random-udid'
         }, UICATALOG_SIM_CAPS);
 
-        await driver.init(caps).should.be.rejectedWith('environment you requested was unavailable');
+        await driver.init(caps).should.be.rejectedWith('Unknown device or simulator UDID');
       });
 
       it('with non-existent udid: throws an error', async () => {
@@ -221,14 +248,15 @@ describe('XCUITestDriver', function () {
         let udid = 'a77841db006fb1762fee0bb6a2477b2b3e1cfa7d';
         let caps = _.defaults({udid}, UICATALOG_SIM_CAPS);
 
-        await driver.init(caps).should.be.rejectedWith('environment you requested was unavailable');
+        await driver.init(caps).should.be.rejectedWith('Unknown device or simulator UDID');
       });
 
       it('with noReset set to true: leaves sim booted', async function () {
         this.timeout(MOCHA_TIMEOUT);
 
         // before
-        let udid = await createDevice('webDriverAgentTest', 'iPhone 6', UICATALOG_SIM_CAPS.platformVersion);
+        const udid = await createDevice(SIM_DEVICE_NAME,
+          UICATALOG_SIM_CAPS.deviceName, UICATALOG_SIM_CAPS.platformVersion);
         let sim = await getSimulator(udid);
 
         // some systems require a pause before initializing.
@@ -252,18 +280,62 @@ describe('XCUITestDriver', function () {
 
         // cleanup
         await sim.shutdown();
-        await deleteDevice(udid);
+        await deleteDeviceWithRetry(udid);
       });
     });
 
     describe('event timings', () => {
       it('should include event timings if cap is used', async () => {
-        let newCaps = Object.assign({}, UICATALOG_SIM_CAPS, {eventTimings: true});
+        let newCaps = Object.assign({}, caps, {eventTimings: true});
         await driver.init(newCaps);
         let res = await driver.sessionCapabilities();
         should.exist(res.events);
         should.exist(res.events.newSessionStarted);
         res.events.newSessionStarted[0].should.be.above(res.events.newSessionRequested[0]);
+      });
+    });
+    describe('w3c compliance', () => {
+      const sessionUrl = `http://${HOST}:${PORT}/wd/hub/session`;
+      it('should accept w3c formatted caps', async function () {
+        const { status, value, sessionId } = await request.post({url: sessionUrl, json: W3C_CAPS});
+        should.not.exist(status);
+        value.should.exist;
+        value.capabilities.should.exists;
+        should.not.exist(sessionId);
+        should.exist(value.sessionId);
+        await request.delete({url: `${sessionUrl}/${value.sessionId}`});
+      });
+      it('should not accept w3c caps if missing "platformName" capability', async function () {
+        await request.post({
+          url: sessionUrl,
+          json: _.omit(W3C_CAPS, ['capabilities.alwaysMatch.platformName']),
+        }).should.eventually.be.rejectedWith(/platformName can\'t be blank/);
+      });
+      it('should accept the "appium:" prefix', async function () {
+        const w3cCaps = _.cloneDeep(W3C_CAPS);
+        const alwaysMatch = w3cCaps.capabilities.alwaysMatch;
+        const deviceName = alwaysMatch.deviceName;
+        delete alwaysMatch.deviceName;
+        await request.post({url: sessionUrl, json: w3cCaps}).should.eventually.be.rejected;
+        alwaysMatch['appium:deviceName'] = deviceName;
+        const { value } = await request.post({url: sessionUrl, json: w3cCaps});
+        value.should.exist;
+        await request.delete(`${sessionUrl}/${value.sessionId}`);
+      });
+      it('should receive 404 status code if call findElement on one that does not exist', async function () {
+        const { value } = await request.post({url: sessionUrl, json: W3C_CAPS});
+        try {
+          await request.post({
+            url: `${sessionUrl}/${value.sessionId}/element`,
+            json: {
+              using: 'accessibility id',
+              value: 'Bad Selector'
+            },
+          });
+        } catch (e) {
+          e.statusCode.should.equal(404);
+        }
+        await request.delete({url: `${sessionUrl}/${value.sessionId}`});
       });
     });
   } else {

@@ -152,7 +152,7 @@ describe('XCUITestDriver - element(s)', function () {
         });
         it('should type a url in the text field', async () => {
           // in Travis this sometimes gets the wrong text
-          let retries = process.env.TRAVIS ? 5 : 1;
+          let retries = process.env.CI ? 5 : 1;
           await retryInterval(retries, 100, async () => {
             let el = await driver.elementByClassName('XCUIElementTypeTextField');
             await el.clear();
@@ -308,6 +308,9 @@ describe('XCUITestDriver - element(s)', function () {
           await B.delay(1000);
           let el = await driver.elementByClassName('XCUIElementTypeTextField');
           await el.click();
+
+          // pause to make sure the keyboard comes up
+          await B.delay(500);
 
           let db = await driver.elementByAccessibilityId('Done');
           (await db.isDisplayed()).should.be.true;

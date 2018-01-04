@@ -6,9 +6,12 @@ import { getSimulator } from 'appium-ios-simulator';
 import request from 'request-promise';
 import WebDriverAgent from '../../../lib/wda/webDriverAgent'; // eslint-disable-line import/no-unresolved
 import { SubProcess } from 'teen_process';
-import { PLATFORM_VERSION } from '../desired';
+import { PLATFORM_VERSION, DEVICE_NAME } from '../desired';
 import { MOCHA_TIMEOUT } from '../helpers/session';
+import { retryInterval } from 'asyncbox';
 
+
+const SIM_DEVICE_NAME = 'webDriverAgentTest';
 
 chai.should();
 chai.use(chaiAsPromised);
@@ -35,7 +38,7 @@ describe('WebDriverAgent', function () {
   describe('with fresh sim', () => {
     let device;
     before(async function () {
-      let simUdid = await createDevice('webDriverAgentTest', 'iPhone 6', PLATFORM_VERSION);
+      let simUdid = await createDevice(SIM_DEVICE_NAME, DEVICE_NAME, PLATFORM_VERSION);
       device = await getSimulator(simUdid);
     });
 
@@ -53,7 +56,9 @@ describe('WebDriverAgent', function () {
         await device.run();
       });
       afterEach(async () => {
-        await device.shutdown();
+        try {
+          await retryInterval(5, 1000, device.shutdown.bind(device));
+        } catch (ign) {}
       });
 
       it('should launch agent on a sim', async function () {

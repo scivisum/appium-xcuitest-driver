@@ -2,7 +2,8 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import _ from 'lodash';
 import sinon from 'sinon';
-import * as IOSDriver from 'appium-ios-driver';
+import * as Logs from '../../lib/device-log/ios-log';
+import * as CrashLogs from '../../lib/device-log/ios-crash-log';
 import { startLogCapture } from '../../lib/commands/log';
 
 
@@ -18,10 +19,10 @@ describe('XCUITestDriver - startLogCapture', function () {
       startCapture: _.noop,
     };
     startCaptureSpy = sinon.spy(spy, 'startCapture');
-    crashLogStub = sinon.stub(IOSDriver, 'IOSCrashLog', function () {
+    crashLogStub = sinon.stub(CrashLogs, 'IOSCrashLog', function () {
       this.startCapture = _.noop;
     });
-    iosLogStub = sinon.stub(IOSDriver, 'IOSLog', function () {
+    iosLogStub = sinon.stub(Logs, 'IOSLog', function () {
       this.startCapture = spy.startCapture;
     });
   });
@@ -42,6 +43,7 @@ describe('XCUITestDriver - startLogCapture', function () {
     startCaptureSpy.callCount.should.equal(0);
     await startLogCapture.call(fakeInstance);
     startCaptureSpy.callCount.should.equal(1);
+    fakeInstance.logs.syslog.isCapturing = true;
     await startLogCapture.call(fakeInstance);
     startCaptureSpy.callCount.should.equal(1);
   });
