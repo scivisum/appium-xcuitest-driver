@@ -3,13 +3,14 @@ import chaiAsPromised from 'chai-as-promised';
 import B from 'bluebird';
 import stream from 'stream';
 import unzip from 'unzip';
-import path from 'path';
 import { UICATALOG_CAPS } from '../desired';
 import { initSession, deleteSession, MOCHA_TIMEOUT } from '../helpers/session';
 
 
 chai.should();
 chai.use(chaiAsPromised);
+
+const UICAT_CONTAINER = `@com.example.apple-samplecode.UICatalog`;
 
 if (!process.env.REAL_DEVICE) {
   describe('XCUITestDriver - file movement', function () {
@@ -19,7 +20,7 @@ if (!process.env.REAL_DEVICE) {
     before(async function () {
       driver = await initSession(UICATALOG_CAPS);
     });
-    after(async () => {
+    after(async function () {
       await deleteSession();
     });
 
@@ -29,26 +30,25 @@ if (!process.env.REAL_DEVICE) {
     }
 
     describe('sim relative', function () {
-      describe('files', () => {
-        it('should not be able to fetch a file from the file system at large', async () => {
+      describe('files', function () {
+        it('should not be able to fetch a file from the file system at large', async function () {
           await driver.pullFile(__filename).should.eventually.be.rejected;
         });
 
-        it('should be able to fetch the Address book', async () => {
-          let file = 'Library/AddressBook/AddressBook.sqlitedb';
-          let stringData = await pullFileAsString(file);
-          stringData.indexOf('SQLite').should.not.equal(-1);
+        it('should be able to fetch the Address book', async function () {
+          let stringData = await pullFileAsString(`${UICAT_CONTAINER}/PkgInfo`);
+          stringData.indexOf('APPL').should.not.equal(-1);
         });
 
-        it('should not be able to fetch something that does not exist', async () => {
+        it('should not be able to fetch something that does not exist', async function () {
           await driver.pullFile('Library/AddressBook/nothere.txt')
             .should.eventually.be.rejectedWith(/13/);
         });
 
-        it('should be able to push and pull a file', async () => {
+        it('should be able to push and pull a file', async function () {
           let stringData = `random string data ${Math.random()}`;
           let base64Data = new Buffer(stringData).toString('base64');
-          let remotePath = 'Library/AppiumTest/remote.txt';
+          let remotePath = `${UICAT_CONTAINER}/remote.txt`;
 
           await driver.pushFile(remotePath, base64Data);
           let remoteStringData = await pullFileAsString(remotePath);
@@ -56,19 +56,20 @@ if (!process.env.REAL_DEVICE) {
         });
       });
 
-      describe('folders', () => {
-        it('should not pull folders from file system', async () => {
+      describe('folders', function () {
+        it('should not pull folders from file system', async function () {
           await driver.pullFolder(__dirname).should.eventually.be.rejected;
         });
 
-        it('should not be able to fetch a folder that does not exist', async () => {
+        it('should not be able to fetch a folder that does not exist', async function () {
           await driver.pullFolder('Library/Rollodex')
             .should.eventually.be.rejectedWith(/13/);
         });
 
-        it('should pull all the files in Library/AddressBook', async () => {
+        it('should pull all the files in Library/AddressBook', async function () {
           let entryCount = 0;
-          let data = await driver.pullFolder('Library/AddressBook');
+          let remotePath = `Library/AddressBook`;
+          let data = await driver.pullFolder(remotePath);
           await new B((resolve) => {
             let zipStream = new stream.Readable();
             zipStream._read = function noop () {};
@@ -90,11 +91,11 @@ if (!process.env.REAL_DEVICE) {
       });
     });
 
-    describe('app relative', () => {
-      it('should be able to push and pull a file from the app directory', async () => {
+    describe('app relative', function () {
+      it('should be able to push and pull a file from the app directory', async function () {
         let stringData = `random string data ${Math.random()}`;
         let base64Data = new Buffer(stringData).toString('base64');
-        let remotePath = path.resolve('/UICatalog.app', 'somefile.tmp');
+        let remotePath = `${UICAT_CONTAINER}/UICatalog.app/somefile.tmp`;
 
         await driver.pushFile(remotePath, base64Data);
         let remoteStringData = await pullFileAsString(remotePath);

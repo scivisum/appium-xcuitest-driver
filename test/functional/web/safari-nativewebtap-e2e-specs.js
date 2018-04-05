@@ -1,13 +1,12 @@
-import { startServer } from '../../..';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import wd from 'wd';
 import _ from 'lodash';
-import { HOST, PORT, MOCHA_TIMEOUT } from '../helpers/session';
+import { initSession, deleteSession, MOCHA_TIMEOUT } from '../helpers/session';
 import { SAFARI_CAPS } from '../desired';
 import { spinTitleEquals, GUINEA_PIG_PAGE, GUINEA_PIG_SCROLLABLE_PAGE,
          GUINEA_PIG_APP_BANNER_PAGE } from './helpers';
-import { killAllSimulators } from 'appium-ios-simulator';
+import { killAllSimulators } from '../helpers/simulator';
+import B from 'bluebird';
 
 
 chai.should();
@@ -20,24 +19,17 @@ const caps = _.defaults({
 const spinRetries = 5;
 
 describe('Safari', function () {
-  let server, driver;
-  before(async () => {
-    driver = wd.promiseChainRemote(HOST, PORT);
-    server = await startServer(PORT, HOST);
-  });
+  this.timeout(MOCHA_TIMEOUT * 2);
 
-  after(async () => {
-    if (server) {
-      await server.close();
-    }
+  let driver;
+  before(async function () {
+    await killAllSimulators();
   });
 
   function runTests (deviceName) {
     describe(`coordinate conversion - ${deviceName} -`, function () {
-      this.timeout(MOCHA_TIMEOUT * 2);
-
-      before(async () => {
-        await driver.init(_.defaults({
+      before(async function () {
+        driver = await initSession(_.defaults({
           deviceName,
           fullReset: true,
           noReset: false,
@@ -45,7 +37,7 @@ describe('Safari', function () {
         await driver.setImplicitWaitTimeout(5000);
       });
       after(async function () {
-        await driver.quit();
+        await deleteSession();
         await killAllSimulators();
       });
 
@@ -125,6 +117,7 @@ describe('Safari', function () {
 
           // going back will reveal the full url bar
           await driver.back();
+          await B.delay(500);
 
           // make sure we get the correct position again
           el = await driver.elementByLinkText('i am a link to page 3');
