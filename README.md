@@ -13,7 +13,6 @@
 
 ## Missing functionality
 
-* Setting geo location (https://github.com/appium/appium/issues/6856)
 * Auto accepting/dismissing alerts (https://github.com/appium/appium/issues/6863)
 * Touch Actions support is limited. Only basic actions, like drag-n-drop, long tap, double tap and tap are supported. Gestures, which are natively supported by XCTest, are implemented via the corresponding ["mobile:" endpoints](https://github.com/appium/appium/blob/master/docs/en/writing-running-appium/ios-xctest-mobile-gestures.md)
 
@@ -21,8 +20,7 @@
 ## Known issues
 
 * `shake` is implemented via AppleScript and works only on Simulator due to lack of support from Apple
-* `lock` and lock-screen interaction in general is not implemented due to lack of support from Apple
-* Setting geo-location is implemented via AppleScript and works only on Simulator due to lack of support from Apple
+* Setting geo-location is implemented via AppleScript and works only on Simulator due to lack of support from Apple. In order to make it work on real devices one should have `idevicelocation` tool available.
 * Through multi action API, `zoom` works but `pinch` does not, due to Apple issue.
 
 
@@ -155,6 +153,9 @@ Differences noted here
 |`absoluteWebLocations`|This capability will direct the `Get Element Location` command, when used within webviews, to return coordinates which are relative to the origin of the page, rather than relative to the current scroll offset. This capability has no effect outside of webviews. Default `false`.|e.g., `true`|
 |`simulatorWindowCenter`|Allows to explicitly set the coordinates of Simulator window center for Xcode9+ SDK. This capability only has an effect if Simulator window has not been opened yet for the current session before it started.|e.g. `{-100.0,100.0}` or `{500,500}`, spaces are not allowed|
 |`useJSONSource`|Get JSON source from WDA and parse into XML on Appium server. This can be much faster, especially on large devices. Defaults to `false`.|e.g., `true`|
+|`shutdownOtherSimulators`|If this capability set to `true` and the current device under test is an iOS Simulator then Appium will try to shutdown all the other running Simulators before to start a new session. This might be useful while executing webview tests on different devices, since only one device can be debugged remotely at once due to an Apple bug. The capability only has an effect if `--relaxed-security` command line argument is provided to the server. Defaults to `false`.|e.g. `true`|
+|`keepKeyChains`|Set the capability to `true` in order to preserve Simulator keychains folder after full reset. This feature has no effect on real devices. Defaults to `false`|e.g. `true`|
+|`keychainsExcludePatterns`|This capability accepts comma-separated path patterns, which are going to be excluded from keychains restore while full reset is being performed on Simulator. It might be useful if you want to exclude only particular keychain types from being restored, like the applications keychain. This feature has no effect on real devices.|e.g. `*keychain*.db*` to exclude applications keychain from being restored|
 
 ## Development<a id="development"></a>
 

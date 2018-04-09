@@ -3,6 +3,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { createDevice, deleteDevice } from 'node-simctl';
 import { getVersion } from 'appium-xcode';
 import { getSimulator } from 'appium-ios-simulator';
+import { killAllSimulators, shutdownSimulator } from '../helpers/simulator';
 import request from 'request-promise';
 import WebDriverAgent from '../../../lib/wda/webDriverAgent'; // eslint-disable-line import/no-unresolved
 import { SubProcess } from 'teen_process';
@@ -28,14 +29,16 @@ function getStartOpts (device) {
   };
 }
 
+
 describe('WebDriverAgent', function () {
   this.timeout(MOCHA_TIMEOUT);
+  this.retries(2);
 
   let xcodeVersion;
-  before(async () => {
+  before(async function () {
     xcodeVersion = await getVersion(true);
   });
-  describe('with fresh sim', () => {
+  describe('with fresh sim', function () {
     let device;
     before(async function () {
       let simUdid = await createDevice(SIM_DEVICE_NAME, DEVICE_NAME, PLATFORM_VERSION);
@@ -45,19 +48,22 @@ describe('WebDriverAgent', function () {
     after(async function () {
       this.timeout(MOCHA_TIMEOUT);
 
-      await device.shutdown();
+      await shutdownSimulator(device);
 
       await deleteDevice(device.udid);
     });
 
     describe('with running sim', function () {
       this.timeout(6 * 60 * 1000);
-      beforeEach(async () => {
+      beforeEach(async function () {
+        await killAllSimulators();
         await device.run();
       });
-      afterEach(async () => {
+      afterEach(async function () {
         try {
-          await retryInterval(5, 1000, device.shutdown.bind(device));
+          await retryInterval(5, 1000, async function () {
+            await shutdownSimulator(device);
+          });
         } catch (ign) {}
       });
 
@@ -78,12 +84,12 @@ describe('WebDriverAgent', function () {
         agent.xcodebuild.createSubProcess = async function () {
           let args = [
             '-workspace',
-            this.agentPath,
+            `${this.agentPath}dfgs`,
             // '-scheme',
             // 'XCTUITestRunner',
-            '-destination',
-            `id=${this.device.udid}`,
-            'test'
+            // '-destination',
+            // `id=${this.device.udid}`,
+            // 'test'
           ];
           let xcodebuild = new SubProcess('xcodebuild', args);
           return xcodebuild;

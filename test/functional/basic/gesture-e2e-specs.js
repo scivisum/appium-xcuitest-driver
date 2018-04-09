@@ -7,6 +7,7 @@ import { retryInterval } from 'asyncbox';
 import { UICATALOG_CAPS } from '../desired';
 import { initSession, deleteSession, MOCHA_TIMEOUT } from '../helpers/session';
 import { APPIUM_IMAGE } from '../web/helpers';
+import xcode from 'appium-xcode';
 
 
 chai.should();
@@ -17,27 +18,30 @@ describe('XCUITestDriver - gestures', function () {
 
   let driver;
 
-  describe('dynamic gestures', () => {
-    before(async () => {
+  describe('dynamic gestures', function () {
+    before(async function () {
       driver = await initSession(UICATALOG_CAPS);
     });
-    beforeEach(async () => {
+    beforeEach(async function () {
       await driver.back();
     });
-    after(async () => {
+    after(async function () {
       await deleteSession();
     });
-    afterEach(async () => {
+    afterEach(async function () {
       // wait a moment to allow anything to happen
       await B.delay(500);
     });
 
-    describe('tap, press, longpress', () => {
-      beforeEach(async () => {
+    describe('tap, press, longpress', function () {
+      beforeEach(async function () {
         await retryInterval(10, 500, async () => {
           let el = await driver.elementByAccessibilityId('Action Sheets');
           await driver.execute('mobile: scroll', {element: el, toVisible: true});
           await el.click();
+          // wait a moment to switch views
+          await B.delay(500);
+          await driver.elementByAccessibilityId('Okay / Cancel');
         });
       });
 
@@ -52,7 +56,7 @@ describe('XCUITestDriver - gestures', function () {
           await els[0].click();
         });
       }
-      describe('tap', () => {
+      describe('tap', function () {
         it('should tap on the element', async function () {
           // TODO: this works locally but fails in CI.
           if (process.env.CI && UICATALOG_CAPS.platformVersion === '10.3') {
@@ -82,26 +86,26 @@ describe('XCUITestDriver - gestures', function () {
           await exitModal('OK');
         });
       });
-      it('should long press on an element', async () => {
-        let el1 = await driver.elementByAccessibilityId('Okay / Cancel');
+      it('should long press on an element', async function () {
+        let el = await driver.elementByAccessibilityId('Okay / Cancel');
         let action = new wd.TouchAction(driver);
-        action.longPress({el: el1});
+        action.longPress({el}).release();
         await action.perform();
 
         await exitModal('Cancel');
       });
-      it('should long press on an element with duration through press-wait-release', async () => {
-        let el1 = await driver.elementByAccessibilityId('Okay / Cancel');
+      it('should long press on an element with duration through press-wait-release', async function () {
+        let el = await driver.elementByAccessibilityId('Okay / Cancel');
         let action = new wd.TouchAction(driver);
-        action.press({el: el1}).wait(1200).release();
+        action.press({el}).wait(1200).release();
         await action.perform();
 
         await exitModal('Cancel');
       });
-      it('should long press on an element with duration through pressOpts.duration', async () => {
-        let el1 = await driver.elementByAccessibilityId('Okay / Cancel');
+      it('should long press on an element with duration through pressOpts.duration', async function () {
+        let el = await driver.elementByAccessibilityId('Okay / Cancel');
         let action = new wd.TouchAction(driver);
-        action.longPress({el: el1, duration: 1200});
+        action.longPress({el, duration: 1200}).release();
         await action.perform();
 
         await exitModal('Cancel');
@@ -128,13 +132,18 @@ describe('XCUITestDriver - gestures', function () {
       let el2 = await driver.elementByAccessibilityId('Text Fields');
 
       let action = new wd.TouchAction(driver);
-      action.press({el: el1}).moveTo({el: el2}).release();
+      action.press({el: el1}).wait(500).moveTo({el: el2}).release();
       await action.perform();
 
       let el3 = await driver.elementByAccessibilityId('Text Fields');
       await el3.click().should.not.be.rejected;
     });
-    it('should double tap on an element', async () => {
+    it('should double tap on an element', async function () {
+      // FIXME: Multitouch does not work as expected in Xcode < 9.
+      if ((await xcode.getVersion(true)).major < 9) {
+        return this.skip();
+      }
+
       let el = await driver.elementByAccessibilityId('Steppers');
       await driver.execute('mobile: scroll', {element: el, toVisible: true});
       await el.click();
@@ -144,7 +153,8 @@ describe('XCUITestDriver - gestures', function () {
       action.tap({el: stepper, count: 2});
       await action.perform();
 
-      await driver.elementByAccessibilityId('2').should.not.be.rejected;
+      await driver.elementByAccessibilityId('2')
+        .should.not.be.rejected;
     });
     it(`should swipe the table and the bottom cell's Y position should change accordingly`, async function () {
       let winEl = await driver.elementByClassName('XCUIElementTypeWindow');
@@ -160,8 +170,8 @@ describe('XCUITestDriver - gestures', function () {
       let yFinal = (await pickerEl.getLocation()).y;
       yFinal.should.be.above(yMiddle);
     });
-    describe('pinch and zoom', () => {
-      beforeEach(async () => {
+    describe('pinch and zoom', function () {
+      beforeEach(async function () {
         let el = await driver.elementByAccessibilityId('Web View');
         await driver.execute('mobile: scroll', {element: el, toVisible: true});
         await el.click();
@@ -169,7 +179,7 @@ describe('XCUITestDriver - gestures', function () {
 
       // at this point this test relies on watching it happen, nothing is asserted
       // in automation, this just checks that errors aren't thrown
-      it('should be able to pinch', async () => {
+      it('should be able to pinch', async function () {
         let ctxs;
         await retryInterval(10, 1000, async () => {
           // on some systems (like Travis) it takes a while to load the webview
@@ -214,18 +224,18 @@ describe('XCUITestDriver - gestures', function () {
       });
     });
   });
-  describe('tap with tapWithShortPressDuration cap', () => {
+  describe('tap with tapWithShortPressDuration cap', function () {
     // needs a special cap, so has to be in its own session
-    before(async () => {
+    before(async function () {
       driver = await initSession(_.defaults({
         tapWithShortPressDuration: 0.01
       }, UICATALOG_CAPS));
     });
-    after(async () => {
+    after(async function () {
       await deleteSession();
     });
 
-    it('should tap on the element', async () => {
+    it('should tap on the element', async function () {
       let el1 = await driver.elementByAccessibilityId('Action Sheets');
       let action = new wd.TouchAction(driver);
       action.tap({el: el1});

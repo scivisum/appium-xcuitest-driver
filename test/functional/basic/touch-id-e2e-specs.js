@@ -5,7 +5,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { TOUCHIDAPP_CAPS } from '../desired';
 import { initSession, deleteSession, MOCHA_TIMEOUT } from '../helpers/session';
 import B from 'bluebird';
-import { killAllSimulators } from 'appium-ios-simulator';
+import { killAllSimulators } from '../helpers/simulator';
 
 
 chai.should();
@@ -20,16 +20,16 @@ if (!process.env.REAL_DEVICE && !process.env.CI) {
     this.retries(MOCHA_RETRIES);
     let driver;
 
-    beforeEach(async () => {
+    beforeEach(async function () {
       await killAllSimulators();
     });
 
-    afterEach(async () => {
+    afterEach(async function () {
       await deleteSession();
       await B.delay(500);
     });
 
-    after(async () => {
+    after(async function () {
       await killAllSimulators();
     });
 
