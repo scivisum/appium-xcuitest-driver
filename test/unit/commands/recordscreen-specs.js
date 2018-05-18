@@ -7,6 +7,7 @@ import * as utils from '../../../lib/utils';
 import * as teen_process from 'teen_process';
 import sinon from 'sinon';
 import B from 'bluebird';
+import v8 from 'v8';
 
 
 chai.should();
@@ -15,7 +16,7 @@ chai.use(chaiAsPromised);
 const driver = new XCUITestDriver();
 describe('basic', withMocks({driver, fs, tempDir, utils, teen_process}, function (mocks) {
   const localFile = '/path/to/local.mp4';
-  const mediaContent = new Buffer('appium');
+  const mediaContent = Buffer.from('appium');
   const udid = '1234';
   driver.opts = {
     device: {
@@ -23,16 +24,13 @@ describe('basic', withMocks({driver, fs, tempDir, utils, teen_process}, function
     }
   };
 
+  afterEach(function () {
+    mocks.verify();
+  });
+
   describe('startRecordingScreen', function () {
     beforeEach(function () {
       driver._recentScreenRecordingPath = null;
-    });
-    afterEach(function () {
-      mocks.driver.verify();
-      mocks.utils.verify();
-      mocks.teen_process.verify();
-      mocks.tempDir.verify();
-      mocks.fs.verify();
     });
 
     it('should call simctl to start screen recording on Simulator', async function () {
@@ -89,13 +87,6 @@ describe('basic', withMocks({driver, fs, tempDir, utils, teen_process}, function
     beforeEach(function () {
       mocks.driver.expects('isRealDevice').returns(false);
     });
-    afterEach(function () {
-      mocks.driver.verify();
-      mocks.utils.verify();
-      mocks.teen_process.verify();
-      mocks.tempDir.verify();
-      mocks.fs.verify();
-    });
 
     it('should kill the process and get the content of the created mp4 file using ps', async function () {
       const pid = '1';
@@ -135,7 +126,7 @@ describe('basic', withMocks({driver, fs, tempDir, utils, teen_process}, function
       mocks.fs.expects('exists').once().withExactArgs(localFile).returns(true);
       mocks.fs.expects('rimraf').once().withExactArgs(localFile);
       mocks.fs.expects('stat').once().withExactArgs(localFile)
-        .returns({size: process.memoryUsage().heapTotal});
+        .returns({size: v8.getHeapStatistics().total_available_size});
 
       await driver.stopRecordingScreen().should.eventually.be.rejectedWith(/is too large/);
     });
