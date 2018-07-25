@@ -131,12 +131,17 @@ describe('XCUITestDriver - gestures', function () {
       let el1 = await driver.elementByAccessibilityId('Action Sheets');
       let el2 = await driver.elementByAccessibilityId('Progress Views');
 
+      let el3 = await driver.elementByAccessibilityId('Text Fields');
+      await el3.isDisplayed().should.eventually.be.false;
+
       let action = new wd.TouchAction(driver);
-      action.press({el: el1}).wait(500).moveTo({el: el2}).release();
+      action.press({el: el2}).wait(500).moveTo({el: el1}).release();
       await action.perform();
 
-      let el3 = await driver.elementByAccessibilityId('Text Fields');
-      await el3.click().should.not.be.rejected;
+      await el3.isDisplayed().should.eventually.be.true;
+
+      // go back
+      await driver.execute('mobile: scroll', {element: el1, toVisible: true});
     });
     it('should double tap on an element', async function () {
       // FIXME: Multitouch does not work as expected in Xcode < 9.
@@ -221,6 +226,29 @@ describe('XCUITestDriver - gestures', function () {
           await pinch.perform();
         }
         await doPinch();
+      });
+    });
+    describe('special actions', function () {
+      it('should open the control center by swiping up at the bottom', async function () {
+        await driver.elementByAccessibilityId('ControlCenterView')
+          .should.eventually.be.rejectedWith(/An element could not be located/);
+
+        const window = await driver.elementByClassName('XCUIElementTypeWindow');
+        const {width, height} = await window.getSize();
+
+        let action = new wd.TouchAction(driver);
+        action.press({
+          x: width / 2,
+          y: height - 5,
+        }).wait(500)
+        .moveTo({
+          x: width / 2,
+          y: height / 2,
+        });
+        await action.perform();
+
+        // Control Center ought to be visible now
+        await driver.elementByAccessibilityId('ControlCenterView');
       });
     });
   });

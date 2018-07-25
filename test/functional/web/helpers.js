@@ -3,7 +3,9 @@ import { HOST, PORT } from '../helpers/session';
 import { util } from 'appium-support';
 
 
-const BASE_END_POINT = `http://${process.env.REAL_DEVICE ? util.localIp() : HOST}:${PORT}`;
+const LOCAL_BASE_END_POINT = `http://${process.env.REAL_DEVICE ? util.localIp() : HOST}:${PORT}`;
+const REMOTE_BASE_END_POINT = `http://127.0.0.1:4443`;
+const BASE_END_POINT = process.env.CLOUD ? REMOTE_BASE_END_POINT : LOCAL_BASE_END_POINT;
 const TEST_END_POINT = `${BASE_END_POINT}/test`;
 const GUINEA_PIG_PAGE = `${TEST_END_POINT}/guinea-pig`;
 const GUINEA_PIG_SCROLLABLE_PAGE = `${GUINEA_PIG_PAGE}-scrollable`;
@@ -25,7 +27,7 @@ async function spinTitle (driver) {
   return title;
 }
 
-async function spinTitleEquals (driver, expectedTitle, tries = 90, interval = 500) {
+async function spinTitleEquals (driver, expectedTitle, tries = 10, interval = 500) {
   await retryInterval(tries, interval, async () => {
     let title = await spinTitle(driver);
     if (title !== expectedTitle) {

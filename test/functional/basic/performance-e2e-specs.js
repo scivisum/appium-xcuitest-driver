@@ -2,13 +2,13 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import B from 'bluebird';
 import { UICATALOG_CAPS } from '../desired';
-import { initSession, deleteSession, MOCHA_TIMEOUT } from '../helpers/session';
+import { initSession, deleteSession, getServer, MOCHA_TIMEOUT } from '../helpers/session';
 
 
 chai.should();
 chai.use(chaiAsPromised);
 
-describe('XCUITestDriver - perfomance', function () {
+describe('XCUITestDriver - performance', function () {
   this.timeout(MOCHA_TIMEOUT);
 
   let driver;
@@ -16,14 +16,14 @@ describe('XCUITestDriver - perfomance', function () {
   describe('record performance metrics', function () {
     before(async function () {
       driver = await initSession(UICATALOG_CAPS);
-      driver.relaxedSecurityEnabled = true;
+      getServer().driver.relaxedSecurityEnabled = true;
     });
     after(async function () {
       await deleteSession();
     });
 
     it('should return recorded trace file on stop', async function () {
-      if (process.env.CI) {
+      if (process.env.CI || process.env.CLOUD) {
         // It looks like Travis is just way too slow
         return this.skip();
       }
