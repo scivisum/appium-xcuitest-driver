@@ -52,6 +52,9 @@ matrix:
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=0 TEST=functional/web
+      addons:
+        sauce_connect:
+          no_ssl_bump_domains: localhost
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=0 TEST=functional/long
@@ -61,6 +64,9 @@ matrix:
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=1 TEST=functional/web
+      addons:
+        sauce_connect:
+          no_ssl_bump_domains: localhost
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=1 TEST=functional/long
@@ -70,6 +76,9 @@ matrix:
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=2 TEST=functional/web
+      addons:
+        sauce_connect:
+          no_ssl_bump_domains: localhost
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=2 TEST=functional/long
@@ -79,6 +88,9 @@ matrix:
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=3 TEST=functional/web
+      addons:
+        sauce_connect:
+          no_ssl_bump_domains: localhost
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=3 TEST=functional/long
@@ -88,6 +100,9 @@ matrix:
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=4 TEST=functional/web
+      addons:
+        sauce_connect:
+          no_ssl_bump_domains: localhost
     - os: linux
       if: type = cron
       env: CLOUD=1 SAUCE_EMUSIM_DEVICE_INDEX=4 TEST=functional/long
@@ -121,12 +136,24 @@ before_install:
       sed -i '' 's/git@github.com:/https:\/\/github.com\//' /Users/travis/build/appium/appium-xcuitest-driver/.gitmodules;
       git submodule update --init --recursive;
     fi
+install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+      npm install;
+    else
+      npm install --production;
+      npm install --no-save gulp appium-gulp-plugins chai chai-as-promised chai-subset wd unzip mocha mocha-parallel-tests sync-request;
+      npm run build;
+    fi
 script:
-  - npm run lint && npm run mocha -- -t 480000 --require build/test/env/env --recursive build/test/$TEST -g @skip-ci -i --exit
+  - if [ -n "$CLOUD" ]; then
+      npm run mocha -t 480000 --require build/test/env/env --recursive build/test/$TEST -g @skip-ci -i --exit;
+    else
+      npm run lint;
+      npm run mocha -- -t 480000 --recursive build/test/$TEST -g @skip-ci -i --exit;
+    fi
   - if [ -n "$COVERALLS" ]; then npm run coverage; fi
   - if [ -n "$CI_METRICS" ]; then
       mkdir -p ./ci-metrics && ls -la ./ci-metrics;
-      nvm install 7;
       npm install -g appium-event-parser;
       appium-event-parser -s -i ./ci-metrics;
     fi

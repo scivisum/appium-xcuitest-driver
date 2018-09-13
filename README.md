@@ -12,12 +12,6 @@
 *Note*: Issue tracking for this repo has been disabled. Please use the [main Appium issue tracker](https://github.com/appium/appium/issues) instead.
 
 
-## Missing functionality
-
-* Auto accepting/dismissing alerts (https://github.com/appium/appium/issues/6863)
-* Touch Actions support is limited. Only basic actions, like drag-n-drop, long tap, double tap and tap are supported. Gestures, which are natively supported by XCTest, are implemented via the corresponding ["mobile:" endpoints](https://github.com/appium/appium/blob/master/docs/en/writing-running-appium/ios-xctest-mobile-gestures.md)
-
-
 ## Known issues
 
 * `shake` is implemented via AppleScript and works only on Simulator due to lack of support from Apple
@@ -159,6 +153,8 @@ Differences noted here
 |`keepKeyChains`|Set the capability to `true` in order to preserve Simulator keychains folder after full reset. This feature has no effect on real devices. Defaults to `false`|e.g. `true`|
 |`keychainsExcludePatterns`|This capability accepts comma-separated path patterns, which are going to be excluded from keychains restore while full reset is being performed on Simulator. It might be useful if you want to exclude only particular keychain types from being restored, like the applications keychain. This feature has no effect on real devices.|e.g. `*keychain*.db*` to exclude applications keychain from being restored|
 |`realDeviceScreenshotter`|Name of the alternative screenshot system to use for real devices. Defaults to the XCUITest screenshot functionality through WebDriverAgent. Possible value is `idevicescreenshot` to use the screenshot program from libimobiledevice.|e.g., `idevicescreenshot`|
+|`mjpegServerPort`|The port number on which WDA broadcasts screenshots stream encoded into MJPEG format from the device under test. It might be necessary to change this value if the default port is busy because of other tests running in parallel. Default value: `9100`|e.g. `12000`|
+|`waitForQuiescence`| It allows to turn on/off waiting for application quiescence in WebDriverAgent, while performing queries. The default value is `true`. You can avoid [this kind of issues](https://github.com/appium/appium/issues/11132) if you turn it off. |e.g `false`|
 
 ## Development<a id="development"></a>
 
