@@ -6,13 +6,13 @@ chai.should();
 
 describe('session commands', function () {
   let driver = new XCUITestDriver();
-  driver.opts.udid = "cecinestpasuneudid";
-  let proxySpy = sinon.stub(driver, 'proxyCommand').callsFake(async (endpoint, method) => {
-    if (endpoint === "/" && method === "GET") {
+  driver.opts.udid = 'cecinestpasuneudid';
+  let proxySpy = sinon.stub(driver, 'proxyCommand').callsFake(async (endpoint, method) => { // eslint-disable-line require-await
+    if (endpoint === '/' && method === 'GET') {
       return {
         capabilities: {
           sillyCap: true,
-          app: "LOL.app",
+          app: 'LOL.app',
         }
       };
     }
@@ -22,7 +22,7 @@ describe('session commands', function () {
     sinon.stub(driver, 'getStatusBarHeight').returns(20),
     sinon.stub(driver, 'getViewportRect').returns({x: 1, y: 2, height: 3, width: 4}),
     sinon.stub(driver, 'getScreenInfo').returns({
-      statusBarSize: {width: 400, height:20},
+      statusBarSize: {width: 400, height: 20},
       scale: 3
     }),
     sinon.stub(driver, 'getDevicePixelRatio').returns(3)
@@ -38,18 +38,18 @@ describe('session commands', function () {
   describe('getSession', function () {
     it('should merge caps with WDA response', async function () {
       driver.caps = {
-        platformName: "iOS",
+        platformName: 'iOS',
         javascript_enabled: true,
-        app: "NOTLOL.app",
+        app: 'NOTLOL.app',
       };
       let res = await driver.getSession();
       proxySpy.calledOnce.should.be.true;
       res.should.eql({
         sillyCap: true,
-        app: "LOL.app",
-        platformName: "iOS",
+        app: 'LOL.app',
+        platformName: 'iOS',
         javascript_enabled: true,
-        udid: "cecinestpasuneudid",
+        udid: 'cecinestpasuneudid',
         statBarHeight: 20,
         viewportRect: {x: 1, y: 2, height: 3, width: 4},
         pixelRatio: 3,

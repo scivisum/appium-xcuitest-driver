@@ -1,0 +1,52 @@
+# https://docs.microsoft.com/azure/devops/pipelines/languages/android
+parameters:
+    script: ''
+    name: ios-e2e-test
+    dependsOn: ''
+    iosVersion: 12.1
+    xcodeVersion: 10.1
+    deviceName: 'iPhone X'
+
+jobs:
+  - job: ${{ parameters.name }}
+    variables:
+      PLATFORM_VERSION: ${{ parameters.iosVersion }}
+      DEVICE_NAME: ${{ parameters.deviceName }}
+      MOCHA_FILE: '$(DEVICE_NAME)-$(PLATFORM_VERSION)-tests.xml'
+      CI: true
+    pool:
+      vmImage: 'macOS 10.13'
+    steps:
+    - checkout: self
+      submodules: true
+    - script: ls /Applications/
+      displayName: List Installed Applications
+    - script: sudo xcode-select -s /Applications/Xcode_${{ parameters.xcodeVersion }}.app/Contents/Developer
+      displayName: Xcode Select ${{ parameters.xcodeVersion }}
+    - script: xcodebuild -version
+      displayName: Log Xcode Version
+    - script: xcrun simctl list
+      displayName: List Installed Simulators
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 11.x
+    - script: |
+        sed -i '' 's/git@github.com:/https:\/\/github.com\//' /Users/travis/build/appium/appium-xcuitest-driver/.gitmodules;
+        git submodule update --init --recursive;
+      displayName: Checkout WDA submodule
+    - script: npm install
+      displayName: Install node dependencies
+    - script: npm run build
+      displayName: Build
+    - script: ${{ parameters.script }}
+      displayName: Run functional tests
+    - task: PublishTestResults@2
+      condition: always()
+      inputs:
+        testResultsFiles: $(MOCHA_FILE)
+    - task: PublishCodeCoverageResults@1
+      condition: always()
+      inputs:
+        codeCoverageTool: cobertura
+        summaryFileLocation: coverage/cobertura-coverage.xml
+        reporterDirectory: coverage/

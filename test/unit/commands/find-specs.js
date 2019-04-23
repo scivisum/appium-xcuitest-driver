@@ -83,7 +83,7 @@ describe('general commands', function () {
         "/*[@firstVisible = 'true']"
       ];
       let attribSpy = sinon.stub(driver, 'getAttribute');
-      for (let variant of variants) {
+      for (const variant of variants) {
         proxySpy.withArgs(
           '/element/ctx/element',
           'POST',
@@ -94,8 +94,8 @@ describe('general commands', function () {
           'POST',
           {using: 'class chain', value: '*[2]', countOnly: false}
         ).returns({ELEMENT: 2});
-        attribSpy.withArgs('visible', {ELEMENT: 1}).returns("false");
-        attribSpy.withArgs('visible', {ELEMENT: 2}).returns("true");
+        attribSpy.withArgs('visible', {ELEMENT: 1}).returns('false');
+        attribSpy.withArgs('visible', {ELEMENT: 2}).returns('true');
         let el = await driver.findNativeElementOrElements('xpath',
           variant, false, {ELEMENT: 'ctx'});
         proxySpy.calledTwice.should.be.true;
@@ -115,10 +115,10 @@ describe('general commands', function () {
     });
 
     it('should convert magic is scrollable xpath to class chain', async function () {
-      const multSel = "**/*[`type == \"XCUIElementTypeScrollView\" OR " +
-        "type == \"XCUIElementTypeTable\" OR " +
-        "type == \"XCUIElementTypeCollectionView\" OR " +
-        "type == \"XCUIElementTypeWebView\"`]";
+      const multSel = '**/*[`type == "XCUIElementTypeScrollView" OR ' +
+        'type == "XCUIElementTypeTable" OR ' +
+        'type == "XCUIElementTypeCollectionView" OR ' +
+        'type == "XCUIElementTypeWebView"`]';
       const singleSel = `${multSel}[1]`;
       await verifyFind('xpath',
                        '//*[@scrollable="true"]',
