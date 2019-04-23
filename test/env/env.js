@@ -1,39 +1,26 @@
 import _ from 'lodash';
-import request from 'sync-request';
-import { logger } from 'appium-support';
+import log from './logger';
+import configRealDevice from './env-ios-real';
+import configSimulator from './env-ios-sim';
 
-const log = logger.getLogger('CI STAGING TESTS');
 
 let env = {};
 
+if (!process.env.SAUCE_BUILD) {
+  // Get the environment variables
+  if (!_.isEmpty(process.env.SAUCE_EMUSIM_DEVICE_INDEX) || process.env.SAUCE_EMUSIM) {
+    log.info('Running tests on SauceLabs simulator');
+    Object.assign(env, configSimulator());
+  } else if (!_.isEmpty(process.env.SAUCE_RDC_DEVICE_INDEX) || process.env.SAUCE_RDC) {
+    log.info('Running tests on SauceLabs real device');
+    Object.assign(env, configRealDevice());
+  }
 
-// Get the environment variables
-if (!_.isEmpty(process.env.SAUCE_EMUSIM_DEVICE_INDEX) || process.env.SAUCE_EMUSIM) {
-  log.info('Running tests on SauceLabs OnDemand');
-  Object.assign(env, require('./env-ios-sim'));
-} else if (!_.isEmpty(process.env.SAUCE_RDC_DEVICE_INDEX) || process.env.SAUCE_RDC) {
-  log.info('Running tests on SauceLabs real device cloud');
-  Object.assign(env, require('./env-ios-real'));
+  if (process.env.CLOUD) {
+    // get a unique build name for SauceLabs, based on the Travis build number
+    // or the current date, for local testing
+    env.SAUCE_BUILD = `appium-xcuitest-driver CI: ${process.env.TRAVIS_BUILD_NUMBER || new Date().toISOString()}`;
+  }
+
+  Object.assign(process.env, env);
 }
-
-if (env.CLOUD) {
-  // Find the latest bundle
-  log.info('Getting the sha of the most recent master commit');
-  const res = request('GET', 'https://api.bintray.com/packages/appium-builds/appium/appium/files', {json: true});
-  const fileInfoArray = JSON.parse(res.getBody('utf8'));
-  const latestFile = fileInfoArray.sort((fileInfo1, fileInfo2) => (
-    Math.sign(+new Date(fileInfo2.created) - (+new Date(fileInfo1.created)))
-  ))[0];
-  const {name:bundleName} = latestFile;
-
-  // Get the URL
-  const stagingUrl = `https://bintray.com/appium-builds/appium/download_file?file_path=${bundleName}`;
-  log.info(`Using staging URL: ${stagingUrl}`);
-  env.APPIUM_STAGING_URL = stagingUrl;
-
-  // Get the SHA
-  const sha = bundleName.match(/appium-([\w\W]*?).zip/)[1];
-  env.APPIUM_SHA = sha;
-}
-
-Object.assign(process.env, env);

@@ -3,7 +3,7 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { SAFARI_CAPS } from '../desired';
 import { initSession, deleteSession, MOCHA_TIMEOUT } from '../helpers/session';
-import { GUINEA_PIG_PAGE } from './helpers';
+import { openPage, GUINEA_PIG_PAGE } from './helpers';
 import { killAllSimulators } from '../helpers/simulator';
 
 
@@ -21,7 +21,7 @@ describe('safari - execute -', function () {
 
   let driver;
 
-  async function runTests (secure = false) {
+  async function runTests (secure = false) { // eslint-disable-line require-await
     describe('mobile: x methods', function () {
       it('should run in native context', async function () {
         await driver.execute('mobile: scroll', {direction: 'down'}).should.not.be.rejected;
@@ -119,7 +119,7 @@ describe('safari - execute -', function () {
         enableAsyncExecuteFromHttps: true,
       }, SAFARI_CAPS);
       driver = await initSession(caps);
-      await driver.get('https://google.com');
+      await openPage(driver, 'https://google.com');
     });
     after(async function () {
       await deleteSession();

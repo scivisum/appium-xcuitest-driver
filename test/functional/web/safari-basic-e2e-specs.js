@@ -4,44 +4,42 @@ import _ from 'lodash';
 import B from 'bluebird';
 import { MOCHA_TIMEOUT, initSession, deleteSession } from '../helpers/session';
 import { SAFARI_CAPS } from '../desired';
-import { spinTitle, spinTitleEquals, spinWait, GUINEA_PIG_PAGE,
+import { spinTitle, spinTitleEquals, spinWait, openPage, GUINEA_PIG_PAGE,
          PHISHING_END_POINT } from './helpers';
 import { util } from 'appium-support';
+import { retryInterval } from 'asyncbox';
 
 
 chai.should();
 chai.use(chaiAsPromised);
 let expect = chai.expect;
 
-let caps = _.defaults({
+let DEFAULT_CAPS = _.defaults({
   safariInitialUrl: GUINEA_PIG_PAGE,
   nativeWebTap: true,
 }, SAFARI_CAPS);
 
-describe('Safari', function () {
+describe('Safari - basics -', function () {
   this.timeout(MOCHA_TIMEOUT);
 
   let driver;
 
   describe('init', function () {
-    this.retries(3);
     afterEach(async function () {
       await deleteSession();
     });
 
     it('should start a session with default init', async function () {
-      let expectedTitle = process.env.REAL_DEVICE ? 'Appium: Mobile App Automation Made Awesome.'
-                                                  : 'Appium/welcome';
+      const expectedTitle = process.env.REAL_DEVICE
+        ? 'Appium: Mobile App Automation Made Awesome.'
+        : 'Appium/welcome';
       driver = await initSession(SAFARI_CAPS);
-      let title = await spinTitle(driver);
+      const title = await spinTitle(driver);
       title.should.equal(expectedTitle);
     });
 
     it('should start a session with custom init', async function () {
-      let caps = _.defaults({
-        safariInitialUrl: GUINEA_PIG_PAGE
-      }, SAFARI_CAPS);
-      driver = await initSession(caps);
+      driver = await initSession(DEFAULT_CAPS);
       let title = await spinTitle(driver);
       const expectedTitle = 'I am a page title';
       title.should.equal(expectedTitle);
@@ -50,11 +48,11 @@ describe('Safari', function () {
 
   describe('basics', function () {
     before(async function () {
-      driver = await initSession(_.defaults({
+      const caps = _.defaults({
         safariIgnoreFraudWarning: false,
-        safariInitialUrl: GUINEA_PIG_PAGE,
         showSafariConsoleLog: true,
-      }, caps));
+      }, DEFAULT_CAPS);
+      driver = await initSession(caps);
     });
     after(async function () {
       await deleteSession();
@@ -66,7 +64,7 @@ describe('Safari', function () {
       describe('small timeout, slow page load', function () {
         it('should go to the requested page', async function () {
           await driver.setPageLoadTimeout(3000);
-          await driver.get(`${GUINEA_PIG_PAGE}?delay=30000`);
+          await openPage(driver, `${GUINEA_PIG_PAGE}?delay=30000`);
 
           // the page should not have time to load
           (await driver.source()).should.include('Let\'s browse!');
@@ -78,7 +76,7 @@ describe('Safari', function () {
         it('should go to the requested page', async function () {
           await driver.setCommandTimeout(12000);
           await driver.setPageLoadTimeout(0);
-          await driver.get(`${GUINEA_PIG_PAGE}?delay=3000`);
+          await openPage(driver, `${GUINEA_PIG_PAGE}?delay=3000`);
 
           // the page should load after 70000
           (await driver.source()).should.include('I am some page content');
@@ -125,13 +123,13 @@ describe('Safari', function () {
 
     describe('window title', function () {
       it('should return a valid title on web view', async function () {
-        (await driver.title()).should.include("I am a page title");
+        (await driver.title()).should.include('I am a page title');
       });
     });
 
     describe('element handling', function () {
       beforeEach(async function () {
-        await driver.get(GUINEA_PIG_PAGE);
+        await openPage(driver, GUINEA_PIG_PAGE);
       });
 
       it('should find a web element in the web view', async function () {
@@ -202,7 +200,7 @@ describe('Safari', function () {
     });
     describe('element handling', function () {
       beforeEach(async function () {
-        await driver.get(GUINEA_PIG_PAGE);
+        await openPage(driver, GUINEA_PIG_PAGE);
       });
 
       it('should send keystrokes to active element', async function () {
@@ -304,7 +302,7 @@ describe('Safari', function () {
         await B.delay(500);
 
         let url = await driver.url();
-        await driver.get(url);
+        await openPage(driver, url);
 
         (await driver.url()).should.include('#anchor');
       });
@@ -320,22 +318,22 @@ describe('Safari', function () {
 
       // there can be other things logged, so check that the text is there somewhere
       function checkTexts (logs, expectedTexts) {
-        const logText = _.map(logs, (el) => el.message).join(',');
-        for (let line of expectedTexts) {
+        const logText = _.map(logs, (el) => el.message || el.text).join(',');
+        for (const line of expectedTexts) {
           logText.should.include(line);
         }
       }
 
       it('should get console logs for JS on the page', async function () {
         // reload the page to execute JS
-        await driver.get(GUINEA_PIG_PAGE);
+        await openPage(driver, GUINEA_PIG_PAGE);
 
         const logs = await driver.log('safariConsole');
         checkTexts(logs, ['Hello from Appium', 'Loading guinea-pig page', 'Done']);
       });
       it('should get console logs for JS on the page with error', async function () {
         // reload the page to execute JS
-        await driver.get(`${GUINEA_PIG_PAGE}?throwError=xcuitest-error`);
+        await openPage(driver, `${GUINEA_PIG_PAGE}?throwError=xcuitest-error`);
 
         const logs = await driver.log('safariConsole');
         checkTexts(logs, ['Hello from Appium', 'Loading guinea-pig page', 'Done', 'JavaScript Error: xcuitest-error']);
@@ -368,35 +366,40 @@ describe('Safari', function () {
   });
 
   describe('safariIgnoreFraudWarning', function () {
-    this.retries(3);
-
     describe('false', function () {
       beforeEach(async function () {
+        // on 12.2 the site never loads, and never gets automatable
+        if (DEFAULT_CAPS.platformVersion === '12.2') {
+          return this.skip();
+        }
+
         driver = await initSession(_.defaults({
           safariIgnoreFraudWarning: false,
-        }, caps));
+        }, DEFAULT_CAPS));
       });
       afterEach(async function () {
         await deleteSession();
       });
 
       it('should display a phishing warning', async function () {
-        await driver.get(PHISHING_END_POINT);
-        (await driver.source()).toLowerCase().should.include('phishing');
+        await openPage(driver, PHISHING_END_POINT);
+        await retryInterval(60, 1000, async function () {
+          (await driver.source()).toLowerCase().should.include('phishing');
+        });
       });
     });
     describe('true', function () {
       beforeEach(async function () {
         driver = await initSession(_.defaults({
           safariIgnoreFraudWarning: true,
-        }, caps));
+        }, DEFAULT_CAPS));
       });
       afterEach(async function () {
         await deleteSession();
       });
 
       it('should not display a phishing warning', async function () {
-        await driver.get(PHISHING_END_POINT);
+        await openPage(driver, PHISHING_END_POINT);
         (await driver.source()).toLowerCase().should.not.include('phishing');
       });
     });

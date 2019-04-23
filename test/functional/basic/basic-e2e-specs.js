@@ -55,18 +55,18 @@ describe('XCUITestDriver - basics -', function () {
 
   describe('session -', function () {
     it('should get session details with our caps merged with WDA response', async function () {
-      let extraWdaCaps = {
-        CFBundleIdentifier: "com.example.apple-samplecode.UICatalog",
-        browserName: "UICatalog",
-        device: "iphone",
+      const extraWdaCaps = {
+        CFBundleIdentifier: 'com.example.apple-samplecode.UICatalog',
+        browserName: 'UICatalog',
+        device: 'iphone',
       };
       let expected = Object.assign({}, UICATALOG_CAPS, extraWdaCaps);
+
       let actual = await driver.sessionCapabilities();
       actual.udid.should.exist;
       // don't really know a priori what the udid should be, so just ensure
       // it's there, and validate the rest
       delete actual.udid;
-      delete expected.udid; // for real device tests
       // if we are getting metrics for this run (such as on Travis) there will
       // be events in the result, but we cannot know what they should be
       delete actual.events;
@@ -86,9 +86,14 @@ describe('XCUITestDriver - basics -', function () {
       actual.viewportRect.width.should.be.a('number');
       delete actual.viewportRect;
 
+      delete expected.udid; // for real device tests
+
       if (process.env.CLOUD) {
         delete expected.app;
         delete expected[process.env.APPIUM_BUNDLE_CAP];
+
+        delete expected.name;
+        delete expected.build;
 
         // Cloud has several extraneous keys. Check if the caps contain expected subset only.
         actual.should.containSubset(expected);
@@ -135,7 +140,7 @@ describe('XCUITestDriver - basics -', function () {
   describe('screenshot -', function () {
     after(async function () {
       try {
-        await driver.setOrientation("PORTRAIT");
+        await driver.setOrientation('PORTRAIT');
       } catch (ign) {}
     });
     it('should get an app screenshot', async function () {
@@ -153,7 +158,7 @@ describe('XCUITestDriver - basics -', function () {
       screenshot1.should.exist;
 
       try {
-        await driver.setOrientation("LANDSCAPE");
+        await driver.setOrientation('LANDSCAPE');
       } catch (ign) {}
       // take a little pause while it orients, otherwise you get the screenshot
       // on an angle
@@ -169,7 +174,7 @@ describe('XCUITestDriver - basics -', function () {
     it('should get a cropped screenshot of the viewport without statusbar', async function () {
       const {statBarHeight, pixelRatio, viewportRect} = await driver.sessionCapabilities();
       const fullScreen = await driver.takeScreenshot();
-      const viewScreen = await driver.execute("mobile: viewportScreenshot");
+      const viewScreen = await driver.execute('mobile: viewportScreenshot');
       const fullB64 = Buffer.from(fullScreen, 'base64');
       const viewB64 = Buffer.from(viewScreen, 'base64');
       const fullImg = new PNG({filterType: 4});
@@ -186,13 +191,10 @@ describe('XCUITestDriver - basics -', function () {
     describe('types -', function () {
       it('should get the list of available logs', async function () {
         const expectedTypes = [
-          'syslog', 'crashlog', 'performance', 'server', 'safariConsole'
+          'syslog', 'crashlog', 'performance', 'server', 'safariConsole',
         ];
-        if (!process.env.CLOUD) {
-          expectedTypes.push('safariNetwork');
-        }
         const actualTypes = await driver.logTypes();
-        actualTypes.should.eql(expectedTypes);
+        actualTypes.should.containSubset(expectedTypes);
       });
     });
 
@@ -285,7 +287,7 @@ describe('XCUITestDriver - basics -', function () {
     });
   });
 
-  describe.skip('contexts -', function () {
+  describe('contexts -', function () {
     before(async function () {
       let el = await driver.elementByAccessibilityId('Web View');
       await driver.execute('mobile: scroll', {element: el, toVisible: true});

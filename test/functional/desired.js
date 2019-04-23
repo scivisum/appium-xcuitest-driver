@@ -4,6 +4,7 @@ import glob from 'glob';
 import fs from 'fs';
 import apps from './apps';
 
+
 const PLATFORM_VERSION = process.env.PLATFORM_VERSION ? process.env.PLATFORM_VERSION : '11.3';
 let DEVICE_NAME = process.env.DEVICE_NAME;
 
@@ -37,22 +38,31 @@ const REAL_DEVICE_CAPS = REAL_DEVICE ? {
   webkitResponseTimeout: 30000,
   testobject_app_id: apps.testAppId,
   testobject_api_key: process.env.SAUCE_RDC_ACCESS_KEY,
-  //testobject_remote_appium_url: process.env.APPIUM_STAGING_URL, // TODO: Once RDC starts supporting this again, re-insert this
+  testobject_remote_appium_url: process.env.APPIUM_STAGING_URL, // TODO: Once RDC starts supporting this again, re-insert this
 } : {};
 
-const GENERIC_CAPS = {
+let GENERIC_CAPS = {
   platformName: 'iOS',
-  platformVersion: process.env.CLOUD ? process.env.CLOUD_PLATFORM_VERSION : PLATFORM_VERSION,
+  platformVersion: PLATFORM_VERSION,
   deviceName: DEVICE_NAME,
   automationName: 'XCUITest',
   noReset: true,
   maxTypingFrequency: 30,
   clearSystemFiles: true,
   showXcodeLog: SHOW_XCODE_LOG,
-  [process.env.APPIUM_BUNDLE_CAP]: {"appium-url": `bintray:${process.env.APPIUM_SHA}`}
-  //'appium-version': {"appium-url": `bintray:${process.env.APPIUM_SHA}`}
-  // TODO: If it's SAUCE_RDC add the appium staging URL
+  wdaLaunchTimeout: (60 * 1000 * 4),
+  wdaConnectionTimeout: (60 * 1000 * 8)
 };
+
+if (process.env.CLOUD) {
+  GENERIC_CAPS.platformVersion = process.env.CLOUD_PLATFORM_VERSION;
+  GENERIC_CAPS.build = process.env.SAUCE_BUILD;
+  GENERIC_CAPS.showIOSLog = false;
+  GENERIC_CAPS[process.env.APPIUM_BUNDLE_CAP || 'appium-version'] = {'appium-url': 'sauce-storage:appium.zip'};
+  // TODO: If it's SAUCE_RDC add the appium staging URL
+
+  // `name` will be set during session initialization
+}
 
 // on Travis, when load is high, the app often fails to build,
 // and tests fail, so use static one in assets if necessary,
@@ -78,6 +88,10 @@ const UICATALOG_SIM_CAPS = _.defaults({
 }, GENERIC_CAPS);
 delete UICATALOG_SIM_CAPS.noReset; // do not want to have no reset on the tests that use this
 
+const SETTINGS_CAPS = _.defaults({
+  bundleId: 'com.apple.Preferences'
+}, GENERIC_CAPS);
+
 const SAFARI_CAPS = _.defaults({
   browserName: 'Safari',
   testobject_api_key: process.env.SAUCE_RDC_WEB_ACCESS_KEY,
@@ -100,5 +114,5 @@ const W3C_CAPS = {
 
 export {
   UICATALOG_CAPS, UICATALOG_SIM_CAPS, SAFARI_CAPS, TESTAPP_CAPS,
-  PLATFORM_VERSION, TOUCHIDAPP_CAPS, DEVICE_NAME, W3C_CAPS
+  PLATFORM_VERSION, TOUCHIDAPP_CAPS, DEVICE_NAME, W3C_CAPS, SETTINGS_CAPS,
 };
