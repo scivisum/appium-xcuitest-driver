@@ -28,6 +28,7 @@
   },
   "files": [
     "index.js",
+    "gulpfile.js",
     "lib",
     "build/index.js",
     "build/lib",
