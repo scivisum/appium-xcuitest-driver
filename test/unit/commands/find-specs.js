@@ -21,7 +21,7 @@ describe('general commands', function () {
       proxySpy.firstCall.args[1].should.eql('POST');
       proxySpy.firstCall.args[2].should.eql({
         using: modStrategy || strategy,
-        value: modSelector, countOnly: mult === "count"
+        value: modSelector, countOnly: mult === 'count'
       });
       proxySpy.reset();
     }
@@ -61,7 +61,7 @@ describe('general commands', function () {
     });
 
     it('should only count if mult is "count"', async function () {
-      await verifyFind('xpath', '//UIAButton', '//XCUIElementTypeButton', null, "count");
+      await verifyFind('xpath', '//UIAButton', '//XCUIElementTypeButton', null, 'count');
     });
 
     it('should reject request for first visible child with no context', async function () {

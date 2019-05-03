@@ -54,17 +54,17 @@ describe('alert commands', function () {
 
   describe('getAlert', function () {
     let scrollView = sinon.stub();
-    scrollView.ELEMENT = "mockscrollelement";
+    scrollView.ELEMENT = 'mockscrollelement';
 
     it('returns successfully if an alert is present', async function () {
       let button = sinon.stub(),
           alert;
-      button.ELEMENT = "mockbuttonelement";
+      button.ELEMENT = 'mockbuttonelement';
       proxySpy.onCall(0).returns([scrollView]);
       proxySpy.onCall(1).returns({count: 1});
       proxySpy.onCall(2).returns({count: 1});
       proxySpy.onCall(3).returns([button]);
-      proxySpy.onCall(4).returns("close");
+      proxySpy.onCall(4).returns('close');
 
       alert = await driver.getAlert();
 
@@ -92,14 +92,14 @@ describe('alert commands', function () {
       let button1 = sinon.stub(),
           button2 = sinon.stub(),
           alert;
-      button1.ELEMENT = "mockbuttonelement1";
-      button2.ELEMENT = "mockbuttonelement2";
+      button1.ELEMENT = 'mockbuttonelement1';
+      button2.ELEMENT = 'mockbuttonelement2';
       proxySpy.onCall(0).returns([scrollView]);
       proxySpy.onCall(1).returns({count: 1});
       proxySpy.onCall(2).returns({count: 2});
       proxySpy.onCall(3).returns([button1, button2]);
-      proxySpy.onCall(4).returns("cancel");
-      proxySpy.onCall(5).returns("ok");
+      proxySpy.onCall(4).returns('cancel');
+      proxySpy.onCall(5).returns('ok');
 
       alert = await driver.getAlert();
 
