@@ -21,7 +21,7 @@ describe('general commands', function () {
       proxySpy.firstCall.args[1].should.eql('POST');
       proxySpy.firstCall.args[2].should.eql({
         using: modStrategy || strategy,
-        value: modSelector
+        value: modSelector, countOnly: mult === 'count'
       });
       proxySpy.reset();
     }
@@ -60,6 +60,10 @@ describe('general commands', function () {
                         '//XCUIElementTypeMap[@name="UIADummyData"]');
     });
 
+    it('should only count if mult is "count"', async function () {
+      await verifyFind('xpath', '//UIAButton', '//XCUIElementTypeButton', null, 'count');
+    });
+
     it('should reject request for first visible child with no context', async function () {
       await driver.findNativeElementOrElements(
         'xpath', '/*[@firstVisible="true"]', false)
@@ -83,12 +87,12 @@ describe('general commands', function () {
         proxySpy.withArgs(
           '/element/ctx/element',
           'POST',
-          {using: 'class chain', value: '*[1]'}
+          {using: 'class chain', value: '*[1]', countOnly: false}
         ).returns({ELEMENT: 1});
         proxySpy.withArgs(
           '/element/ctx/element',
           'POST',
-          {using: 'class chain', value: '*[2]'}
+          {using: 'class chain', value: '*[2]', countOnly: false}
         ).returns({ELEMENT: 2});
         attribSpy.withArgs('visible', {ELEMENT: 1}).returns('false');
         attribSpy.withArgs('visible', {ELEMENT: 2}).returns('true');
@@ -97,11 +101,11 @@ describe('general commands', function () {
         proxySpy.calledTwice.should.be.true;
         proxySpy.firstCall.args[2].should.eql({
           using: 'class chain',
-          value: '*[1]',
+          value: '*[1]', countOnly: false
         });
         proxySpy.secondCall.args[2].should.eql({
           using: 'class chain',
-          value: '*[2]',
+          value: '*[2]', countOnly: false
         });
         attribSpy.calledTwice.should.be.true;
         el.should.eql({ELEMENT: 2});

@@ -3,6 +3,7 @@ import XCUITestDriver from '../../..';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
+import { errors } from 'appium-base-driver';
 
 chai.should();
 chai.use(chaiAsPromised);
@@ -48,6 +49,79 @@ describe('alert commands', function () {
       proxySpy.calledOnce.should.be.true;
       proxySpy.firstCall.args[0].should.eql('/alert/dismiss');
       proxySpy.firstCall.args[1].should.eql('POST');
+    });
+  });
+
+  describe('getAlert', function () {
+    let scrollView = sinon.stub();
+    scrollView.ELEMENT = 'mockscrollelement';
+
+    it('returns successfully if an alert is present', async function () {
+      let button = sinon.stub(),
+          alert;
+      button.ELEMENT = 'mockbuttonelement';
+      proxySpy.onCall(0).returns([scrollView]);
+      proxySpy.onCall(1).returns({count: 1});
+      proxySpy.onCall(2).returns({count: 1});
+      proxySpy.onCall(3).returns([button]);
+      proxySpy.onCall(4).returns('close');
+
+      alert = await driver.getAlert();
+
+      proxySpy.getCall(0).args[0].should.eql('/elements');
+      proxySpy.getCall(0).args[2].should.eql({
+        using: 'class name', value: 'XCUIElementTypeScrollView', countOnly: false
+      });
+      proxySpy.getCall(1).args[0].should.eql('/element/mockscrollelement/elements');
+      proxySpy.getCall(1).args[2].should.eql({
+        using: 'class name', value: 'XCUIElementTypeTextView', countOnly: true
+      });
+      proxySpy.getCall(2).args[0].should.eql('/element/mockscrollelement/elements');
+      proxySpy.getCall(2).args[2].should.eql({
+        using: 'class name', value: 'XCUIElementTypeButton', countOnly: true
+      });
+      proxySpy.getCall(3).args[0].should.eql('/element/mockscrollelement/elements');
+      proxySpy.getCall(3).args[2].should.eql({
+        using: 'class name', value: 'XCUIElementTypeButton', countOnly: false
+      });
+      proxySpy.getCall(4).args[0].should.eql('/element/mockbuttonelement/attribute/name');
+      alert.should.eql(scrollView);
+    });
+
+    it('returns successfully if a confirm is present', async function () {
+      let button1 = sinon.stub(),
+          button2 = sinon.stub(),
+          alert;
+      button1.ELEMENT = 'mockbuttonelement1';
+      button2.ELEMENT = 'mockbuttonelement2';
+      proxySpy.onCall(0).returns([scrollView]);
+      proxySpy.onCall(1).returns({count: 1});
+      proxySpy.onCall(2).returns({count: 2});
+      proxySpy.onCall(3).returns([button1, button2]);
+      proxySpy.onCall(4).returns('cancel');
+      proxySpy.onCall(5).returns('ok');
+
+      alert = await driver.getAlert();
+
+      proxySpy.callCount.should.equal(6);
+      proxySpy.getCall(4).args[0].should.eql('/element/mockbuttonelement1/attribute/name');
+      proxySpy.getCall(5).args[0].should.eql('/element/mockbuttonelement2/attribute/name');
+      alert.should.eql(scrollView);
+    });
+    it('throws on incorrect number of TextViews', async function () {
+      proxySpy.onCall(0).returns([scrollView]);
+      proxySpy.onCall(1).returns({count: 0});
+
+      await driver.getAlert().should.be.rejectedWith(errors.NoAlertOpenError);
+      proxySpy.callCount.should.equal(2);
+    });
+    it('throws on incorrect number of Buttons', async function () {
+      proxySpy.onCall(0).returns([scrollView]);
+      proxySpy.onCall(1).returns({count: 1});
+      proxySpy.onCall(2).returns({count: 3});
+
+      await driver.getAlert().should.be.rejectedWith(errors.NoAlertOpenError);
+      proxySpy.callCount.should.equal(3);
     });
   });
 
